@@ -11,12 +11,6 @@ contract ListingTest is Test {
     address NonOwner = makeAddr("NonOwner");
     address Creator1 = makeAddr("Creator1");
 
-    event Listed(
-        uint256 indexed projectId,
-        address indexed creator,
-        string metadataUrl
-    );
-
     //setup
     // should be able to deploy listing
     function setUp() external {
@@ -83,7 +77,7 @@ contract ListingTest is Test {
     function testListSuccess() external {
         // assert event is emitted
         vm.expectEmit();
-        emit Listed(1, Creator1, "metadata");
+        emit Listing.Listed(1, Creator1, "metadata");
 
         vm.prank(Creator1);
         listing.list("metadata");
