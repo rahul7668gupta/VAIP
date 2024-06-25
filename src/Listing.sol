@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.18;
 
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
@@ -14,7 +14,7 @@ contract Listing is Ownable {
         bytes metadataUrl;
     }
 
-    mapping(uint256 => Project) s_projectMap;
+    mapping(uint256 => Project) public s_projectMap;
 
     event Listed(
         uint256 indexed projectId,
@@ -34,30 +34,42 @@ contract Listing is Ownable {
         return s_executorContract;
     }
 
-    function list(address creator, string memory metadataUrl) external {
+    function getLastProjectId() external view returns (uint256) {
+        return s_projectId;
+    }
+
+    modifier metadataCheck(string memory metadataUrl) {
+        require(bytes(metadataUrl).length > 0, "Metadata URL cannot be empty");
+        _;
+    }
+
+    function list(
+        string memory metadataUrl
+    ) external metadataCheck(metadataUrl) {
         // increment the project id counter;
         s_projectId++;
         // add a new project to the project mapping
         s_projectMap[s_projectId] = Project(
             s_projectId,
-            creator,
+            msg.sender,
             bytes(metadataUrl)
         );
         // emit listed event
-        emit Listed(s_projectId, creator, metadataUrl);
+        emit Listed(s_projectId, msg.sender, metadataUrl);
     }
 
     function updateProjectMetdata(
         uint256 projectId,
         string memory metadataUrl
-    ) external {
+    ) external metadataCheck(metadataUrl) {
         // only project creator allowed
         Project memory _project = s_projectMap[projectId];
         require(msg.sender == _project.creator, "Caller not Creator");
-        // update project metadata
+        // update project metadata directly
         _project.metadataUrl = bytes(metadataUrl);
+        // update project in the project mapping
         s_projectMap[projectId] = _project;
-        // emit update metdata event
+        // emit update metadata
         emit UpdatedMetadata(projectId, metadataUrl);
     }
 
