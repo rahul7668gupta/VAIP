@@ -450,4 +450,6 @@ contract ProposeTest is Test {
     // process funds with proposal contract having funds, but transfer fails, approved status
     // process funds with proposal contract having funds, transfer fails, Closed status
     // process funds with proposal contract having funds, transfer fails, AutoClosed status
+
+    // TODO: add test for status require statement in executeProposal
 }

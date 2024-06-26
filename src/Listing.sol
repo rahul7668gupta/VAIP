@@ -80,4 +80,13 @@ contract Listing is Ownable {
     function updateExecutorAddress(address _newExecutor) external onlyOwner {
         s_executorContract = _newExecutor;
     }
+
+    // implement recieve and fallback funcs
+    receive() external payable {
+        revert("Cannot recieve funds without function call");
+    }
+
+    fallback() external {
+        revert("Cannot recieve funds without function call");
+    }
 }
