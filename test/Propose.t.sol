@@ -46,6 +46,12 @@ contract ProposeTest is Test {
         _;
     }
 
+    modifier updateExecutor() {
+        vm.prank(OwnerAddr);
+        propose.updateExecutorAddress(Executor);
+        _;
+    }
+
     // s_proposalId should be zero
     function testProposalIdIsZero() external view {
         assertEq(propose.getLastProposalId(), 0);
@@ -345,4 +351,103 @@ contract ProposeTest is Test {
         propose.updateExecutorAddress(address(0x3));
         assertEq(propose.getExecutorContract(), address(0x3));
     }
+
+    function testProcessFundsSuccess()
+        external
+        updateExecutor
+        ensureListing
+        createProposal
+    {
+        vm.expectEmit();
+        emit Propose.ProposalProcessed(1, 1, Propose.ProposalStatus.Approved);
+        vm.prank(Executor);
+        propose.processFunds(1, 1, Propose.ProposalStatus.Approved);
+        (, , , , , Propose.ProposalStatus status, ) = propose.s_proposalMap(1);
+        assertEq(uint256(status), uint256(Propose.ProposalStatus.Approved));
+    }
+
+    function testProcessFundsWithNonExecutor() external {
+        vm.expectRevert();
+        vm.prank(NonOwner);
+        propose.processFunds(1, 1, Propose.ProposalStatus.Approved);
+    }
+
+    // process funds with invalid proposal id
+    function testProcessFundsWithInvalidProposalId() external {
+        vm.expectRevert();
+        vm.prank(Executor);
+        propose.processFunds(2, 1, Propose.ProposalStatus.Approved);
+    }
+
+    // process funds with invalid project id
+    function testProcessFundsWithInvalidProjectId() external {
+        vm.expectRevert();
+        vm.prank(Executor);
+        propose.processFunds(1, 2, Propose.ProposalStatus.Approved);
+    }
+
+    // process funds with status auto closed
+    function testProcessFundsWithStatusAutoClosed()
+        external
+        updateExecutor
+        ensureListing
+        createProposal
+    {
+        vm.expectEmit();
+        emit Propose.ProposalProcessed(
+            1,
+            1,
+            Propose.ProposalStatus.AutomaticallyClosed
+        );
+        vm.prank(Executor);
+        propose.processFunds(1, 1, Propose.ProposalStatus.AutomaticallyClosed);
+        (, , , , , Propose.ProposalStatus status, ) = propose.s_proposalMap(1);
+        assertEq(
+            uint256(status),
+            uint256(Propose.ProposalStatus.AutomaticallyClosed)
+        );
+    }
+
+    // process funds with status closed
+    function testProcessFundsWithStatusClosed()
+        external
+        updateExecutor
+        ensureListing
+        createProposal
+    {
+        vm.expectEmit();
+        emit Propose.ProposalProcessed(1, 1, Propose.ProposalStatus.Closed);
+        vm.prank(Executor);
+        propose.processFunds(1, 1, Propose.ProposalStatus.Closed);
+        (, , , , , Propose.ProposalStatus status, ) = propose.s_proposalMap(1);
+        assertEq(uint256(status), uint256(Propose.ProposalStatus.Closed));
+    }
+
+    // process funds with pending status
+    function testProcessFundsWithStatusPending()
+        external
+        updateExecutor
+        ensureListing
+        createProposal
+    {
+        vm.expectRevert();
+        vm.prank(Executor);
+        propose.processFunds(1, 1, Propose.ProposalStatus.Pending);
+    }
+
+    // process funds with proposal contract not having any funds
+    // function testProcessFundsWithProposalContractNotHavingAnyFunds()
+    //     external
+    //     updateExecutor
+    //     ensureListing
+    //     createProposal
+    // {
+    //     vm.expectRevert();
+    //     vm.deal(Executor, 0 ether);
+    //     vm.prank(Executor);
+    //     propose.processFunds(1, 1, Propose.ProposalStatus.Approved);
+    // }
+    // process funds with proposal contract having funds, but transfer fails, approved status
+    // process funds with proposal contract having funds, transfer fails, Closed status
+    // process funds with proposal contract having funds, transfer fails, AutoClosed status
 }

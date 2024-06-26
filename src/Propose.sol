@@ -67,7 +67,7 @@ contract Propose is Ownable {
 
     constructor(address _listing) Ownable(msg.sender) {
         s_listingContract = _listing;
-        listing = Listing(_listing);
+        listing = Listing(payable(_listing));
     }
 
     modifier onlyExecutor() {
@@ -214,7 +214,7 @@ contract Propose is Ownable {
 
     function updateListingAddress(address _newListing) external onlyOwner {
         s_listingContract = _newListing;
-        listing = Listing(_newListing);
+        listing = Listing(payable(_newListing));
     }
 
     function updateExecutorAddress(address _newExecutor) external onlyOwner {
@@ -245,6 +245,7 @@ contract Propose is Ownable {
         if (status == ProposalStatus.Approved) {
             // mark proposal as Approved
             _proposal.status = ProposalStatus.Approved;
+            s_proposalMap[proposalId] = _proposal;
             // send funds to project creator
             (bool success, ) = creator.call{value: _proposal.amount}("");
             require(success, "Funds transfer failed");
@@ -260,6 +261,7 @@ contract Propose is Ownable {
         ) {
             // mark proposal as Closed or AutomaticallyClosed
             _proposal.status = status;
+            s_proposalMap[proposalId] = _proposal;
             // send funds back to proposer
             (bool success, ) = _proposal.proposer.call{value: _proposal.amount}(
                 ""
@@ -268,7 +270,16 @@ contract Propose is Ownable {
             // emit proposalProcessed event
             emit ProposalProcessed(proposalId, projectId, status);
         } else {
-            revert("Invalid status");
+            revert("Cannot execute for provided status");
         }
+    }
+
+    // implement recieve and fallback funcs
+    receive() external payable {
+        revert("Cannot recieve funds without function call");
+    }
+
+    fallback() external {
+        revert("Cannot recieve funds without function call");
     }
 }
