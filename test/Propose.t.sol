@@ -24,7 +24,7 @@ contract ProposeTest is Test {
         deployListing = new DeployListing();
         listing = deployListing.run();
         deployPropose = new DeployPropose();
-        propose = deployPropose.run();
+        propose = deployPropose.run(address(listing));
         vm.prank(OwnerAddr);
         propose.updateListingAddress(address(listing));
     }

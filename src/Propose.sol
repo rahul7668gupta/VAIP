@@ -8,6 +8,7 @@ contract Propose is Ownable {
     uint256 private s_proposalId;
     address private s_listingContract;
     address private s_executorContract;
+    Listing public listing;
 
     uint256 public constant MIN_AUTO_CLOSE_TIME = 7 days;
     uint256 public constant MIN_CLOSE_INC_TIME = 1 days;
@@ -58,10 +59,22 @@ contract Propose is Ownable {
         ProposalStatus proposalStatus
     );
 
-    constructor() Ownable(msg.sender) {}
+    event ProposalProcessed(
+        uint256 indexed proposalId,
+        uint256 indexed projectId,
+        ProposalStatus proposalStatus
+    );
+
+    constructor(address _listing) Ownable(msg.sender) {
+        s_listingContract = _listing;
+        listing = Listing(_listing);
+    }
 
     modifier onlyExecutor() {
-        require(msg.sender == s_executorContract, "Caller not executor");
+        require(
+            msg.sender == s_executorContract,
+            "Only executor contract can call this function"
+        );
         _;
     }
 
@@ -74,7 +87,6 @@ contract Propose is Ownable {
     }
 
     modifier validateProjectId(uint256 projectId) {
-        Listing listing = Listing(s_listingContract);
         uint256 lastProjectId = listing.getLastProjectId();
         require(
             projectId > 0 && projectId <= lastProjectId,
@@ -202,9 +214,61 @@ contract Propose is Ownable {
 
     function updateListingAddress(address _newListing) external onlyOwner {
         s_listingContract = _newListing;
+        listing = Listing(_newListing);
     }
 
     function updateExecutorAddress(address _newExecutor) external onlyOwner {
         s_executorContract = _newExecutor;
+    }
+
+    function processFunds(
+        uint256 proposalId,
+        uint256 projectId,
+        ProposalStatus status
+    )
+        external
+        onlyExecutor
+        validateProposalId(proposalId)
+        validateProjectId(projectId)
+    {
+        // validate proposal id
+        // validate project id
+        // status should be pending
+        Proposal memory _proposal = s_proposalMap[proposalId];
+        require(
+            _proposal.status == ProposalStatus.Pending,
+            "Proposal must be in pending status"
+        );
+
+        (, address creator, ) = listing.s_projectMap(projectId);
+        // based on the proposal status, execute movement of funds
+        if (status == ProposalStatus.Approved) {
+            // mark proposal as Approved
+            _proposal.status = ProposalStatus.Approved;
+            // send funds to project creator
+            (bool success, ) = creator.call{value: _proposal.amount}("");
+            require(success, "Funds transfer failed");
+            // emit proposalProcessed event
+            emit ProposalProcessed(
+                proposalId,
+                projectId,
+                ProposalStatus.Approved
+            );
+        } else if (
+            status == ProposalStatus.Closed ||
+            status == ProposalStatus.AutomaticallyClosed
+        ) {
+            // mark proposal as Closed or AutomaticallyClosed
+            _proposal.status = status;
+            // send funds back to proposer
+            (bool success, ) = _proposal.proposer.call{value: _proposal.amount}(
+                ""
+            );
+            require(success, "Funds transfer failed");
+            // emit proposalProcessed event
+            emit ProposalProcessed(proposalId, projectId, status);
+        } else {
+            revert("Invalid status");
+        }
     }
 }
