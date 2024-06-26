@@ -122,33 +122,33 @@ contract ProposeTest is Test {
 
         vm.deal(Proposer1, 0.001 ether);
         vm.prank(Proposer1);
-        // propose.createProposal{value: 0.001 ether}(
-        //     1,
-        //     (block.timestamp + 7 days),
-        //     "metadata"
-        // );
-        // (
-        //     uint256 proposalId,
-        //     address proposer,
-        //     uint256 amount,
-        //     uint256 projectId,
-        //     uint256 autoCloseTime,
-        //     Propose.ProposalStatus status,
-        //     bytes memory metadataUrl
-        // ) = propose.s_proposalMap(1);
-        // // assert last proposal id
-        // assertEq(propose.getLastProposalId(), 1);
-        // // assert mapping data
-        // assertEq(proposalId, 1);
-        // assertEq(proposer, Proposer1);
-        // assertEq(amount, 0.001 ether);
-        // assertEq(projectId, 1);
-        // assertEq(autoCloseTime, block.timestamp + 7 days);
-        // assertEq(uint256(status), uint256(Propose.ProposalStatus.Pending));
-        // assertEq(metadataUrl, "metadata");
-        // // assert balances
-        // assertEq(address(propose).balance, 0.001 ether);
-        // assertEq(address(Proposer1).balance, 0 ether);
+        propose.createProposal{value: 0.001 ether}(
+            1,
+            (block.timestamp + 7 days),
+            "metadata"
+        );
+        (
+            uint256 proposalId,
+            address proposer,
+            uint256 amount,
+            uint256 projectId,
+            uint256 autoCloseTime,
+            Propose.ProposalStatus status,
+            bytes memory metadataUrl
+        ) = propose.s_proposalMap(1);
+        // assert last proposal id
+        assertEq(propose.getLastProposalId(), 1);
+        // assert mapping data
+        assertEq(proposalId, 1);
+        assertEq(proposer, Proposer1);
+        assertEq(amount, 0.001 ether);
+        assertEq(projectId, 1);
+        assertEq(autoCloseTime, block.timestamp + 7 days);
+        assertEq(uint256(status), uint256(Propose.ProposalStatus.Pending));
+        assertEq(metadataUrl, "metadata");
+        // assert balances
+        assertEq(address(propose).balance, 0.001 ether);
+        assertEq(address(Proposer1).balance, 0 ether);
     }
 
     // update proposal metadata with NonProposer
