@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {Listing} from "./Listing.sol";
 
 contract Propose is Ownable {
     uint256 private s_proposalId;
@@ -40,11 +41,16 @@ contract Propose is Ownable {
         string metadataUrl
     );
 
-    event ProposalUpdated(
+    event ProposalMetadataUpdated(
         uint256 indexed proposalId,
         uint256 indexed projectId,
-        uint256 autoCloseTime,
         string metadataUrl
+    );
+
+    event ProposalAutoCloseUpdated(
+        uint256 indexed proposalId,
+        uint256 indexed projectId,
+        uint256 autoCloseTime
     );
 
     event ProposalStatusUpdated(
@@ -59,13 +65,31 @@ contract Propose is Ownable {
         _;
     }
 
+    modifier validateProposalId(uint256 proposalId) {
+        require(
+            proposalId <= s_proposalId && proposalId > 0,
+            "Invalid Proposal Id"
+        );
+        _;
+    }
+
+    modifier validateProjectId(uint256 projectId) {
+        Listing listing = Listing(s_listingContract);
+        uint256 lastProjectId = listing.getLastProjectId();
+        require(
+            projectId > 0 && projectId <= lastProjectId,
+            "Invalid Project Id"
+        );
+        _;
+    }
+
     modifier metadataCheck(string memory metadataUrl) {
         require(bytes(metadataUrl).length > 0, "Metadata URL cannot be empty");
         _;
     }
 
     function getListingContract() external view returns (address) {
-        return s_listingContract;
+        return (s_listingContract);
     }
 
     function getExecutorContract() external view returns (address) {
@@ -80,7 +104,7 @@ contract Propose is Ownable {
         uint256 projectId,
         uint256 autoCloseTime,
         string memory metadataUrl
-    ) external payable metadataCheck(metadataUrl) {
+    ) external payable metadataCheck(metadataUrl) validateProjectId(projectId) {
         require(
             msg.value >= MIN_PROPOSAL_ETH,
             "Amount must be greater than 0.001"
@@ -112,12 +136,33 @@ contract Propose is Ownable {
         );
     }
 
-    // TODO: split this func to allow updation of metadata url and autoclose time seperately
-    function updateProposal(
+    function updateProposalMetadata(
         uint256 proposalId,
-        uint256 autoCloseTime,
         string memory metadataUrl
-    ) external metadataCheck(metadataUrl) {
+    ) external metadataCheck(metadataUrl) validateProposalId(proposalId) {
+        Proposal memory _proposal = s_proposalMap[proposalId];
+        require(
+            _proposal.proposer == msg.sender,
+            "Only the proposer can update the proposal"
+        );
+        require(
+            _proposal.status == ProposalStatus.Pending,
+            "Proposal must be in pending status"
+        );
+        _proposal.metadataUrl = bytes(metadataUrl);
+        s_proposalMap[proposalId] = _proposal;
+
+        emit ProposalMetadataUpdated(
+            proposalId,
+            _proposal.projectId,
+            metadataUrl
+        );
+    }
+
+    function updateProposalAutoClose(
+        uint256 proposalId,
+        uint256 autoCloseTime
+    ) external validateProposalId(proposalId) {
         Proposal memory _proposal = s_proposalMap[proposalId];
         require(
             _proposal.proposer == msg.sender,
@@ -131,27 +176,20 @@ contract Propose is Ownable {
             autoCloseTime >= _proposal.autoCloseTime + MIN_CLOSE_INC_TIME,
             "Auto close time must be at least 1 day ahead of the existing autoclose"
         );
-
         _proposal.autoCloseTime = autoCloseTime;
-        _proposal.metadataUrl = bytes(metadataUrl);
         s_proposalMap[proposalId] = _proposal;
 
-        emit ProposalUpdated(
+        emit ProposalAutoCloseUpdated(
             proposalId,
             _proposal.projectId,
-            autoCloseTime,
-            metadataUrl
+            autoCloseTime
         );
     }
 
     function updateProposalStatus(
         uint256 proposalId,
         ProposalStatus _status
-    ) external onlyOwner {
-        require(
-            proposalId <= s_proposalId && proposalId > 0,
-            "Invalid Proposal Id"
-        );
+    ) external onlyOwner validateProposalId(proposalId) {
         Proposal memory _proposal = s_proposalMap[proposalId];
         require(
             _proposal.status == ProposalStatus.Pending,
@@ -160,14 +198,6 @@ contract Propose is Ownable {
         _proposal.status = _status;
         s_proposalMap[proposalId] = _proposal;
         emit ProposalStatusUpdated(proposalId, _status);
-    }
-
-    function processProposal(
-        uint256 proposalId,
-        uint256 projectId,
-        ProposalStatus status
-    ) external onlyExecutor {
-        // based on the proposal status, execute movement of funds
     }
 
     function updateListingAddress(address _newListing) external onlyOwner {
