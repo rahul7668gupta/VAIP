@@ -117,4 +117,19 @@ contract ListingTest is Test {
         assertEq(_creator, Creator1);
         assertEq(string(_metadataUrl), "metadata1");
     }
+
+    // test send eth to listing contract, should revert
+    function testSendEthToContract() external {
+        vm.expectRevert();
+        vm.deal(address(this), 2 ether);
+        payable(address(listing)).transfer(1 ether);
+    }
+
+    // test send eth to fallback function with incorrect function call, should revert
+    function testSendEthToContractFallback() external {
+        vm.expectRevert();
+        vm.deal(address(this), 2 ether);
+        vm.prank(address(this));
+        payable(address(listing)).call{value: 1 ether}("abc(uint256)");
+    }
 }

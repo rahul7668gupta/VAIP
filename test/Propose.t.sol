@@ -116,7 +116,7 @@ contract ProposeTest is Test {
 
     // create proposal success, proposalId inc, mapping check, event emitted
     function testCreateProposalSuccess() external ensureListing {
-        // vm.expectEmit();
+        vm.expectEmit();
         emit Propose.ProposalCreated(
             1,
             Proposer1,
@@ -435,21 +435,18 @@ contract ProposeTest is Test {
         propose.processFunds(1, 1, Propose.ProposalStatus.Pending);
     }
 
-    // process funds with proposal contract not having any funds
-    // function testProcessFundsWithProposalContractNotHavingAnyFunds()
-    //     external
-    //     updateExecutor
-    //     ensureListing
-    //     createProposal
-    // {
-    //     vm.expectRevert();
-    //     vm.deal(Executor, 0 ether);
-    //     vm.prank(Executor);
-    //     propose.processFunds(1, 1, Propose.ProposalStatus.Approved);
-    // }
-    // process funds with proposal contract having funds, but transfer fails, approved status
-    // process funds with proposal contract having funds, transfer fails, Closed status
-    // process funds with proposal contract having funds, transfer fails, AutoClosed status
+    // test send eth to propose contract, should revert
+    function testSendEthToContract() external {
+        vm.expectRevert();
+        vm.deal(address(this), 2 ether);
+        payable(address(propose)).transfer(1 ether);
+    }
 
-    // TODO: add test for status require statement in executeProposal
+    // test send eth to fallback function with incorrect function call, should revert
+    function testSendEthToContractFallback() external {
+        vm.expectRevert();
+        vm.deal(address(this), 2 ether);
+        vm.prank(address(this));
+        payable(address(propose)).call{value: 1 ether}("abc(uint256)");
+    }
 }

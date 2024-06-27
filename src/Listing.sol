@@ -83,10 +83,10 @@ contract Listing is Ownable {
 
     // implement recieve and fallback funcs
     receive() external payable {
-        revert("Cannot recieve funds without function call");
+        revert("Listing: Receive: Cannot recieve funds without function call");
     }
 
-    fallback() external {
-        revert("Cannot recieve funds without function call");
+    fallback() external payable {
+        revert("Listing: Fallback: Cannot recieve funds without function call");
     }
 }
